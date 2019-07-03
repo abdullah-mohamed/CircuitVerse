@@ -14,7 +14,7 @@
   <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
   <!-- Bootstrap core CSS -->
 
-  <link href="/css/4.0.0_bootstrap.min.css" rel="stylesheet" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
   <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous"> -->
   <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">-->
   <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">-->
@@ -33,6 +33,9 @@
       gtag('js', new Date());
 
       gtag('config', 'UA-112678513-1');
+      <% if current_user %>
+      gtag('set', {'user_id': '<%= current_user.id %>'}); // Set the user ID using signed-in user_id.
+      <% end %>
   </script>
 
 </head>
@@ -42,13 +45,16 @@
 <%= yield %>
 
 <script type="text/javascript">
-  setTimeout(()=>document.querySelector(".alert").hide(), 3000);
+  //In this script tag we are checking alert's and if there is alert this code will be execute
+  if(document.querySelector(".alert")){
+   setTimeout(()=>document.querySelector(".alert").hide(), 3000);  
+  }
 </script>
 
 <!--<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>-->
-<script src="/js/1.13.0_popper.min.js" ></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.13.0/umd/popper.min.js" integrity="sha256-pS96pU17yq+gVu4KBQJi38VpSuKN7otMrDQprzf/DWY=" crossorigin="anonymous"></script>
 
-<script src="/js/4.0.0_bootstrap.min.js" ></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 
 <div class="container" style="height:250px">
 <!--This is to give space for footer-->
@@ -64,19 +70,23 @@
     <div class="row">
       <div class="col" style="text-align: center">
         <p style="text-align: center">Brought to you by</p>
-        <a href="https://www.iiitb.ac.in/"><img src="/img/iiitb.jpg" height="70px"></a>
+        <a href="https://www.iiitb.ac.in/"><img src="/img/iiitb.jpg" id="footer-logo-iiitb"></a>
       </div>
       <div class="col" style="text-align: center">
         <p style="text-align: center">Hosting Sponsor</p>
-        <a href="http://digitalocean.com/" ><img src="/img/DO.png" height="60px"></a>
+        <a href="http://digitalocean.com/" ><img src="/img/DO.png" id="footer-logo-DO"></a>
       </div>
-      <div class="col" style="text-align: center">
+
+      <!-- For breaking the line into two lines when the screen size is not big enough -->
+      <div class="d-block d-sm-none w-100"><br/></div>
+
+      <div class="col align-bottom" style="text-align: center">
         <p style="text-align: center">Marketed by</p>
-        <a href="http://www.iiitb.org/"><img src="/img/istudio.png" height="70px"></a>
+        <a href="http://www.iiitb.org/"><img src="/img/istudio.png" id="footer-logo-istudio"></a>
       </div>
       <div class="col" style="text-align: center">
         <p style="text-align: center">Developed by</p>
-        <a href="http://zense.co.in/"><img src="/img/zense.png" height="70px"></a>
+        <a href="http://zense.co.in/"><img src="/img/zense.png" id="footer-logo-zense"></a>
       </div>
 
       <!--<div class="col">-->

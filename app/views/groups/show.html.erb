@@ -1,3 +1,4 @@
+<link rel="stylesheet" type="text/css" href="/css/tooltip.css">
 <div class="container">
   <div class="row feature">
 
@@ -37,7 +38,7 @@
                 <tr>
                   <td><%= link_to user.name, user %></td>
                   <td><%= user.email %></td>
-                  <% if @admin_access %>
+                  <% if policy(@group).admin_access? %>
                       <td><%= link_to 'Remove', group_member_path(GroupMember.find_by(user_id:user.id,group_id:@group.id)), method: :delete, data: { confirm: 'Are you sure?' } %></td>
                   <% end %>
                 </tr>
@@ -98,7 +99,7 @@
         </div>
       </div>
 
-      <% if @admin_access %>
+      <% if policy(@group).admin_access? %>
           <button type="button" class="btn btn-secondary btn-info" data-toggle="modal" data-target="#myModal">Add member</button>
             <%= link_to 'Add new assignment', new_group_assignment_path(@group), class: "btn btn-info" %>
           <br>
@@ -112,14 +113,17 @@
           <th>Assignment</th>
           <th>DeadLine</th>
           <th>Preview</th>
+          <th> Graded </th>
           <th>Actions</th>
-
+          <% unless policy(@group).admin_access? %>
+            <th>Grade</th>
+          <% end %>
         </tr>
         </thead>
 
         <tbody>
         <tbody>
-        <% @group.assignments.each do |assignment| %>
+        <% @group.assignments.includes(projects: :grade).each do |assignment| %>
             <tr>
               <td><%= assignment.name %></td>
               <td><div class="date"><%= assignment.deadline.strftime("%d %b,%Y %I:%M %p %Z") %></div>
@@ -128,8 +132,9 @@
                 <% end %>
               </td>
               <td><%= link_to 'Show', group_assignment_path(@group,assignment) %></td>
+              <td> <%= AssignmentDecorator.new(assignment).graded %> </td>
               <td>
-                <% if @admin_access %>
+                <% if policy(@group).admin_access? %>
                   <% if assignment.status!="closed" %>
                     <%= link_to 'Edit', edit_group_assignment_path(@group,assignment) %>
                   <% else %>
@@ -138,7 +143,7 @@
                   <%= link_to 'Destroy', group_assignment_path(@group,assignment), method: :delete, data: { confirm: 'Are you sure?' } %>
                 <% else %>
 
-                    <% project_assignment=Project.find_by(author_id:current_user.id,assignment_id:assignment.id) %>
+                    <% project_assignment = assignment.projects.find { |p| p.author_id == current_user.id } %>
 
                     <% if(assignment.deadline > Time.now) %>
                         <% if project_assignment.nil?%>
@@ -158,12 +163,26 @@
 
 
               </td>
-
+              <% unless policy(@group).admin_access? %>
+                <td>
+                  <% if policy(assignment).show_grades? && project_assignment.present? %>
+                    <div class="tooltip-help">
+                      <%= ProjectDecorator.new(project_assignment).grade_str %>
+                      <div class="right-help">
+                        <%= ProjectDecorator.new(project_assignment).remarks_str %>
+                        <i> </i>
+                      </div>
+                    </div>
+                  <% else %>
+                    N.A.
+                  <% end %>
+                </td>
+              <% end %>
             </tr>
         <% end %>
         </tbody>
       </table>
-      <% if @admin_access %>
+      <% if policy(@group).admin_access? %>
       <%= link_to 'Edit', edit_group_path(@group) %> |
       <% end %>
       <%= link_to 'Back', user_groups_path(current_user) %>
