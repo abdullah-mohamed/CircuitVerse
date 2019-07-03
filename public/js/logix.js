@@ -36,31 +36,78 @@ forceResetNodes = true; // FLag to reset all Nodes
 //Exact same name as object constructor
 //This list needs to be updated when new circuitselements are created
 
-circuitElementList = [
-    "Input", "Output", "NotGate", "OrGate", "AndGate", "NorGate", "NandGate", "XorGate", "XnorGate", "SevenSegDisplay", "HexDisplay",
-    "Multiplexer", "BitSelector", "Splitter", "Power", "Ground", "ConstantVal", "ControlledInverter", "TriState", "Adder", "Rom", "RAM", "TflipFlop",
-    "JKflipFlop", "SRflipFlop", "DflipFlop", "TTY", "Keyboard", "Clock", "DigitalLed", "Stepper", "VariableLed", "RGBLed", "SquareRGBLed", "Button", "Demultiplexer",
-    "Buffer", "SubCircuit", "Flag", "MSB", "LSB", "PriorityEncoder", "Tunnel", "ALU", "Decoder", "Random", "Counter", "Dlatch", "TB_Input", "TB_Output", "ForceGate",
-];
 
-annotationList = ["Text", "Rectangle", "Arrow"]
-moduleList = [...circuitElementList, ...annotationList]
+function setupElementLists() {
 
-updateOrder = ["wires", ...circuitElementList, "nodes", ...annotationList]; // Order of update
-renderOrder = [...(moduleList.slice().reverse()), "wires", "allNodes"]; // Order of render
+    $('#menu').empty();
 
-//Exact same name as object constructor
-// All the combinational modules which give rise to an value(independently)
+    window.circuitElementList = metadata.circuitElementList;
+    window.annotationList = metadata.annotationList;
+    window.inputList = metadata.inputList;
+    window.subCircuitInputList = metadata.subCircuitInputList;
+    window.moduleList = [...circuitElementList, ...annotationList]
+    window.updateOrder = ["wires", ...circuitElementList, "nodes", ...annotationList]; // Order of update
+    window.renderOrder = [...(moduleList.slice().reverse()), "wires", "allNodes"]; // Order of render
+
+
+    function createIcon(element) {
+        return `<div class="icon logixModules" id="${element}" >
+            <img src= "/img/${element}.svg" >
+            <p class="img__description">${element}</p>    
+        </div>`;
+    }
+
+        let elementHierarchy = metadata.elementHierarchy;
+        for (category in elementHierarchy) {
+            let htmlIcons = '';
+
+            let categoryData = elementHierarchy[category];
+
+            for (let i = 0; i < categoryData.length; i++){
+                let element = categoryData[i];
+                htmlIcons += createIcon(element);
+            }
+                
+            let accordianData = `<div class="panelHeader">${category}</div>
+            <div class="panel" style="overflow-y:hidden">
+              ${htmlIcons}
+            </div>`;
+            
+            $('#menu').append(accordianData);
+            
+        }
+
+        
+
+}
+
+// setupElementLists()
+
+
+// circuitElementList = [
+//     "Input", "Output", "NotGate", "OrGate", "AndGate", "NorGate", "NandGate", "XorGate", "XnorGate", "SevenSegDisplay", "SixteenSegDisplay", "HexDisplay",
+//     "Multiplexer", "BitSelector", "Splitter", "Power", "Ground", "ConstantVal", "ControlledInverter", "TriState", "Adder", "Rom", "RAM", "EEPROM", "TflipFlop",
+//     "JKflipFlop", "SRflipFlop", "DflipFlop", "TTY", "Keyboard", "Clock", "DigitalLed", "Stepper", "VariableLed", "RGBLed", "SquareRGBLed", "RGBLedMatrix", "Button", "Demultiplexer",
+//     "Buffer", "SubCircuit", "Flag", "MSB", "LSB", "PriorityEncoder", "Tunnel", "ALU", "Decoder", "Random", "Counter", "Dlatch", "TB_Input", "TB_Output", "ForceGate",
+// ];
+
+// annotationList = ["Text", "Rectangle", "Arrow"]
+
+// moduleList = [...circuitElementList, ...annotationList]
+// updateOrder = ["wires", ...circuitElementList, "nodes", ...annotationList]; // Order of update
+// renderOrder = [...(moduleList.slice().reverse()), "wires", "allNodes"]; // Order of render
+
+// // Exact same name as object constructor
+// // All the combinational modules which give rise to an value(independently)
 
 // inputList = ["Random","Buffer", "Stepper", "Ground", "Power", "ConstantVal", "Input", "Clock", "Button","Dlatch","JKflipFlop","TflipFlop","SRflipFlop","DflipFlop"];
 // subCircuitInputList=["Clock", "Button","Buffer", "Stepper", "Ground", "Power", "ConstantVal","Dlatch","JKflipFlop","TflipFlop","SRflipFlop","DflipFlop"]
 
-inputList = ["Random", "Dlatch", "JKflipFlop", "TflipFlop", "SRflipFlop", "DflipFlop", "Buffer", "Stepper", "Ground", "Power", "ConstantVal", "Input", "Clock", "Button", "Counter"];
-subCircuitInputList = ["Random", "Dlatch", "JKflipFlop", "TflipFlop", "SRflipFlop", "DflipFlop", "Buffer", "Stepper", "Ground", "Power", "ConstantVal", "Clock", "Button", "Counter"];
+// inputList = ["Random", "Dlatch", "JKflipFlop", "TflipFlop", "SRflipFlop", "DflipFlop", "Buffer", "Stepper", "Ground", "Power", "ConstantVal", "Input", "Clock", "Button", "Counter"];
+// subCircuitInputList = ["Random", "Dlatch", "JKflipFlop", "TflipFlop", "SRflipFlop", "DflipFlop", "Buffer", "Stepper", "Ground", "Power", "ConstantVal", "Clock", "Button", "Counter"];
 
 //Scope object for each circuit level, globalScope for outer level
 scopeList = {};
-
 
 
 // Helper function to show error
@@ -74,6 +121,52 @@ function showError(error) {
         prevErrorMessage = undefined;
         $('#' + id).fadeOut();
     }, 1500);
+}
+
+function showRestricted() {
+    $('#restrictedDiv').removeClass("display--none");
+    // Show no help text for restricted elements
+    $("#Help").removeClass("show");
+    $('#restrictedDiv').html("The element has been restricted by mentor. Usage might lead to deduction in marks");
+}
+
+function hideRestricted() {
+    $('#restrictedDiv').addClass("display--none");
+}
+
+function updateRestrictedElementsList() {
+    if(restrictedElements.length === 0) return;
+
+    const restrictedCircuitElementsUsed = globalScope.restrictedCircuitElementsUsed;
+    let restrictedStr = "";
+
+    restrictedCircuitElementsUsed.forEach((element) => {
+        restrictedStr += `${element}, `;
+    });
+
+    if (restrictedStr === "") {
+        restrictedStr = "None";
+    } else {
+        restrictedStr = restrictedStr.slice(0, -2);
+    }
+
+    $("#restrictedElementsDiv--list").html(restrictedStr);
+}
+
+
+function updateRestrictedElementsInScope(scope = globalScope) {
+    // Do nothing if no restricted elements
+    if(restrictedElements.length === 0) return;
+
+    let restrictedElementsUsed = [];
+    restrictedElements.forEach((element) => {
+        if(scope[element].length > 0) {
+            restrictedElementsUsed.push(element);
+        }
+    });
+
+    scope.restrictedCircuitElementsUsed = restrictedElementsUsed;
+    updateRestrictedElementsList();
 }
 
 // Helper function to show message
@@ -135,7 +228,7 @@ globalScope = undefined;
 // All circuits are stored in a scope
 
 function Scope(name = "localScope", id = undefined) {
-
+    this.restrictedCircuitElementsUsed = [];
     this.id = id || Math.floor((Math.random() * 100000000000) + 1);
     this.CircuitElement = [];
 
@@ -244,7 +337,7 @@ Scope.prototype.fixLayout = function() {
     for (var i = 0; i < this.Output.length; i++)
         max_y = Math.max(this.Output[i].layoutProperties.y, max_y)
     if (max_y != this.layout.height)
-        this.layout.height = max_y + 20;
+        this.layout.height = max_y + 10;
 }
 
 // Funciton which centers the circuit to the correct zoom level
@@ -270,7 +363,7 @@ Scope.prototype.centerFocus = function(zoomIn = true) {
 }
 
 //fn to setup environment
-function setup() {
+function setupEnvironment() {
 
     projectId = generateId();
     updateSimulation = true;
@@ -279,6 +372,16 @@ function setup() {
 
     data = {}
     resetup();
+}
+
+
+function setup() {
+
+    setupElementLists();
+    setupEnvironment();
+    if (!embed)
+        setupUI();
+    startListeners();
 
     // Load project data after 1 second - needs to be improved, delay needs to be eliminated
     setTimeout(function() {
@@ -325,7 +428,7 @@ function setup() {
         }
     }, 1000);
 
-    startListeners();
+    
 
 }
 
@@ -776,7 +879,6 @@ function copy(copyList, cut = false) {
             var obj = globalScope[updateOrder[i]][j];
             if (obj.objectType != 'Wire') { //}&&obj.objectType!='CircuitElement'){//}&&(obj.objectType!='Node'||obj.type==2)){
                 if (!copyList.contains(globalScope[updateOrder[i]][j])) {
-                    ////console.log("DELETE:", globalScope[updateOrder[i]][j]);
                     globalScope[updateOrder[i]][j].cleanDelete();
                 }
             }
@@ -835,6 +937,18 @@ function copy(copyList, cut = false) {
     return data;
 }
 
+// Function selects all the elements from the scope
+function selectAll(scope = globalScope){
+    circuitElementList.forEach((val,_,__)=>{
+        if(scope.hasOwnProperty(val)) {
+            simulationArea.multipleObjectSelections.push(...scope[val]);
+        }
+    });
+
+    if(scope.nodes) {
+        simulationArea.multipleObjectSelections.push(...scope.nodes);
+    }
+}
 
 // The Circuit element class serves as the abstract class for all circuit elements.
 // Data Members: /* Insert Description */
@@ -897,6 +1011,14 @@ function CircuitElement(x, y, scope, dir, bitWidth) {
         index: undefined,
     }
 
+    if (this.canShowInSubcircuit) {
+        this.subcircuitMetadata = {
+            showInSubcircuit: false,
+            x : 0,
+            y : 0
+        }
+    }
+
 }
 
 CircuitElement.prototype.alwaysResolve = false
@@ -946,6 +1068,10 @@ CircuitElement.prototype.saveObject = function() {
         propagationDelay: this.propagationDelay,
         customData: this.customSave()
     }
+
+    if (this.canShowInSubcircuit)
+        data.subcircuitMetadata = this.subcircuitMetadata;
+    
     return data;
 
 }
@@ -1000,14 +1126,32 @@ CircuitElement.prototype.setHeight = function(height) {
 CircuitElement.prototype.overrideDirectionRotation = false;
 
 CircuitElement.prototype.startDragging = function() {
-    this.oldx = this.x;
-    this.oldy = this.y;
+    if (layoutMode) {
+        this.oldx = this.subcircuitMetadata.x;
+        this.oldy = this.subcircuitMetadata.y;
+    }
+    else { 
+        this.oldx = this.x;
+        this.oldy = this.y;
+    }
+    
 }
 CircuitElement.prototype.drag = function() {
-    this.x = this.oldx + simulationArea.mouseX - simulationArea.mouseDownX;
-    this.y = this.oldy + simulationArea.mouseY - simulationArea.mouseDownY;
+    if (layoutMode) {
+        this.subcircuitMetadata.x = this.oldx + simulationArea.mouseX - simulationArea.mouseDownX;
+        this.subcircuitMetadata.y = this.oldy + simulationArea.mouseY - simulationArea.mouseDownY;
+    }
+    else {
+        this.x = this.oldx + simulationArea.mouseX - simulationArea.mouseDownX;
+        this.y = this.oldy + simulationArea.mouseY - simulationArea.mouseDownY;
+    }
+    
 }
 CircuitElement.prototype.update = function() {
+
+    if (layoutMode) {
+        return this.layoutUpdate();
+    }
 
     var update = false;
 
@@ -1110,7 +1254,18 @@ CircuitElement.prototype.isHover = function() {
     var uY = this.upDimensionY;
     var dY = this.downDimensionY;
 
-    if (!this.directionFixed && !this.overrideDirectionRotation) {
+    if (layoutMode) {
+
+        var mX = simulationArea.mouseXf - this.subcircuitMetadata.x;
+        var mY = this.subcircuitMetadata.y - simulationArea.mouseYf;
+
+        var rX = this.layoutProperties.rightDimensionX;
+        var lX = this.layoutProperties.leftDimensionX;
+        var uY = this.layoutProperties.upDimensionY;
+        var dY = this.layoutProperties.downDimensionY;
+    }
+
+    if (!layoutMode && !this.directionFixed && !this.overrideDirectionRotation) {
         if (this.direction == "LEFT") {
             lX = this.rightDimensionX;
             rX = this.leftDimensionX
@@ -1316,6 +1471,16 @@ CircuitElement.prototype.processVerilog = function() {
     }
 }
 
+CircuitElement.prototype.canShowInSubcircuit = false;
+
+// Default layout properties when canShowInSubcircuit is true
+CircuitElement.prototype.layoutProperties = {
+    rightDimensionX : 5,
+    leftDimensionX : 5,
+    upDimensionY : 5,
+    downDimensionY: 5
+};
+
 CircuitElement.prototype.isVerilogResolvable = function() {
 
     var backupValues = []
@@ -1374,6 +1539,103 @@ CircuitElement.prototype.generateVerilog = function() {
     }).join(",") + ");";
 
     return res;
+}
+
+CircuitElement.prototype.layoutDraw = function () {
+
+}
+
+CircuitElement.prototype.layoutUpdate = function () {
+
+        var update = false;
+    
+        update |= this.newElement;
+        if (this.newElement) {
+            this.subcircuitMetadata.x = simulationArea.mouseX;
+            this.subcircuitMetadata.y = simulationArea.mouseY;
+            
+            if (simulationArea.mouseDown) {
+                this.newElement = false;
+                simulationArea.lastSelected = this;
+            } else return;
+        }
+    
+        if (!simulationArea.hover || simulationArea.hover == this)
+            this.hover = this.isHover();
+    
+        // if (!simulationArea.mouseDown) this.hover = false;
+    
+        if ((this.clicked || !simulationArea.hover) && this.isHover()) {
+            this.hover = true;
+            simulationArea.hover = this;
+        } else if (!simulationArea.mouseDown && this.hover && this.isHover() == false) {
+            if (this.hover) simulationArea.hover = undefined;
+            this.hover = false;
+        }
+    
+        if (simulationArea.mouseDown && (this.clicked)) {
+    
+            this.drag();
+            // if (!simulationArea.shiftDown && simulationArea.multipleObjectSelections.contains(this)) {
+            //     for (var i = 0; i < simulationArea.multipleObjectSelections.length; i++) {
+            //         simulationArea.multipleObjectSelections[i].drag();
+            //     }
+            // }
+    
+            update |= true;
+        } else if (simulationArea.mouseDown && !simulationArea.selected) {
+    
+            this.startDragging();
+            // if (!simulationArea.shiftDown && simulationArea.multipleObjectSelections.contains(this)) {
+            //     for (var i = 0; i < simulationArea.multipleObjectSelections.length; i++) {
+            //         simulationArea.multipleObjectSelections[i].startDragging();
+            //     }
+            // }
+            simulationArea.selected = this.clicked = this.hover;
+    
+            update |= this.clicked;
+        } else {
+            if (this.clicked) simulationArea.selected = false;
+            this.clicked = false;
+            this.wasClicked = false;
+        }
+    
+        if (simulationArea.mouseDown && !this.wasClicked) {
+            if (this.clicked) {
+                this.wasClicked = true;
+                // if (this.click) this.click();
+                if (simulationArea.shiftDown) {
+                //     simulationArea.lastSelected = undefined;
+                //     if (simulationArea.multipleObjectSelections.contains(this)) {
+                //         simulationArea.multipleObjectSelections.clean(this);
+                //     } else {
+                //         simulationArea.multipleObjectSelections.push(this);
+                //     }
+                } else {
+                    simulationArea.lastSelected = this;
+                }
+            }
+        }
+
+        if (!this.clicked && !this.newElement) {
+            let x = this.subcircuitMetadata.x;
+            let y = this.subcircuitMetadata.y; 
+            let yy = temp_buffer.layout.height;
+            let xx = temp_buffer.layout.width;
+
+            let rX = this.layoutProperties.rightDimensionX;
+            let lX = this.layoutProperties.leftDimensionX;
+            let uY = this.layoutProperties.upDimensionY;
+            let dY = this.layoutProperties.downDimensionY;
+
+            if (lX <= x && x + rX <= xx && y >= uY && y + dY <= yy)
+                return;
+            
+            this.subcircuitMetadata.showInSubcircuit = false;
+            fillSubcircuitElements();
+        }
+    
+        return update;
 }
 
 function distance(x1, y1, x2, y2) {

@@ -2,8 +2,7 @@ class AssignmentsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_assignment, only: [:show, :edit, :update, :destroy,:start, :reopen]
   before_action :set_group
-  before_action :set_access
-  before_action :check_access, only: [:edit,:update,:destroy,:new,:create, :reopen]
+  before_action :check_access, only: [:edit,:update,:destroy, :reopen]
   after_action :check_reopening_status, only: [:update]
 
 
@@ -17,13 +16,12 @@ class AssignmentsController < ApplicationController
   # GET /assignments/1
   # GET /assignments/1.json
   def show
-
+    authorize @assignment
+    @assignment = AssignmentDecorator.new(@assignment)
   end
 
   def start
-    if(@assignment.status == 'closed' or !Project.find_by(author_id:current_user, assignment_id: @assignment.id).nil? )
-      render plain: "access restricted" and return;
-    end
+    authorize @assignment
     @project = current_user.projects.new
     @project.name = current_user.name + "/" + @assignment.name
     @project.assignment_id = @assignment.id
@@ -37,20 +35,18 @@ class AssignmentsController < ApplicationController
   # GET /assignments/new
   def new
     @assignment = Assignment.new
+    @assignment.group_id = params[:group_id]
     @assignment.deadline = Time.now+1.week
+    authorize @assignment, :admin_access?
   end
 
   # GET /assignments/1/edit
   def edit
-    if @assignment.status == 'closed'
-      render plain: "access restricted" and return;
-    end
+    authorize @assignment
   end
 
   def reopen
-    if @assignment.status == 'open'
-      render plain: "already open" and return;
-    end
+    authorize @assignment
     @assignment.status = 'open'
     @assignment.deadline = Time.now + 1.day
     @assignment.save
@@ -80,10 +76,13 @@ class AssignmentsController < ApplicationController
   def create
 
     description = params["description"]
-    params = assignment_params                  # dont name it as params as params and assignment_params are different
+    params = assignment_create_params
     # params[:deadline] = params[:deadline].to_time
 
+
     @assignment = @group.assignments.new(params)
+    authorize @assignment, :admin_access?
+
     puts(params)
     @assignment.description = description
     @assignment.status = 'open'
@@ -107,14 +106,14 @@ class AssignmentsController < ApplicationController
   def update
 
     description = params["description"]
-    params = assignment_params
+    params = assignment_update_params
     @assignment.description = description
     # params[:deadline] = params[:deadline].to_time
 
     respond_to do |format|
       if @assignment.update(params)
         format.html { redirect_to @group, notice: 'Assignment was successfully updated.' }
-        format.json { render :show, status: :ok, location: @assignment }
+        format.json { render :show, status: :ok }
       else
         format.html { render :edit }
         format.json { render json: @assignment.errors, status: :unprocessable_entity }
@@ -135,7 +134,7 @@ class AssignmentsController < ApplicationController
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_assignment
-        @assignment = Assignment.find(params[:id])
+      @assignment = Assignment.find(params[:id])
     end
 
     def set_group
@@ -143,17 +142,18 @@ class AssignmentsController < ApplicationController
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.
-    def assignment_params
+    def assignment_create_params
+      params.require(:assignment).permit(:name, :deadline, :description, :grading_scale,
+        :restrictions)
+    end
+
+    def assignment_update_params
+      params.require(:assignment).permit(:name, :deadline, :description,
+        :restrictions)
       params.require(:assignment).permit(:name, :deadline, :description)
     end
 
-    def set_access
-      @admin_access = (@group.mentor_id == current_user.id or (!current_user.nil? and current_user.admin))
-    end
-
     def check_access
-      if !@admin_access
-        render plain: "access restricted" and return;
-      end
+      authorize @assignment, :admin_access?
     end
 end

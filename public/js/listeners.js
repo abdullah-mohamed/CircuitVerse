@@ -40,6 +40,15 @@ function startListeners() {
     });
     document.getElementById("simulationArea").addEventListener('mouseup', function(e) {
         if (simulationArea.lastSelected) simulationArea.lastSelected.newElement = false;
+        /*
+        handling restricted circuit elements
+        */
+
+        if(simulationArea.lastSelected && restrictedElements.includes(simulationArea.lastSelected.objectType)
+            && !globalScope.restrictedCircuitElementsUsed.includes(simulationArea.lastSelected.objectType)) {
+            globalScope.restrictedCircuitElementsUsed.push(simulationArea.lastSelected.objectType);
+            updateRestrictedElementsList();
+        }
     });
     window.addEventListener('mousemove', onMouseMove);
 
@@ -154,6 +163,12 @@ function startListeners() {
             e.preventDefault();
         }
 
+        // Detect Select all Shortcut
+        if (simulationArea.controlDown && (e.keyCode == 65 || e.keyCode == 97)) {
+            selectAll();
+            e.preventDefault();
+        }
+
         //change direction fns
         if ((e.keyCode == 37 || e.keyCode == 65)&& simulationArea.lastSelected != undefined) {
             simulationArea.lastSelected.newDirection("LEFT");
@@ -176,8 +191,11 @@ function startListeners() {
             simulationArea.changeClockTime(prompt("Enter Time:"));
         }
         if ((e.keyCode == 108 || e.keyCode == 76) && simulationArea.lastSelected != undefined) {
-            if (simulationArea.lastSelected.setLabel !== undefined)
-                simulationArea.lastSelected.setLabel();
+            if (simulationArea.lastSelected.setLabel !== undefined){
+                var labl = prompt("Enter The Label : ", simulationArea.lastSelected.label);
+                if(labl)
+                    simulationArea.lastSelected.setLabel(labl);
+            }
         }
     })
 
@@ -236,6 +254,11 @@ function startListeners() {
 
 
         var textToPutOnClipboard = copy(simulationArea.copyList, true);
+
+        // Updated restricted elements
+        updateRestrictedElementsInScope();
+
+        localStorage.setItem('clipboardData', textToPutOnClipboard);
         e.preventDefault();
         if(textToPutOnClipboard==undefined)
             return;
@@ -254,6 +277,11 @@ function startListeners() {
         }
 
         var textToPutOnClipboard = copy(simulationArea.copyList);
+
+        // Updated restricted elements
+        updateRestrictedElementsInScope();
+
+        localStorage.setItem('clipboardData', textToPutOnClipboard);
         e.preventDefault();
         if(textToPutOnClipboard==undefined)
             return;
@@ -274,9 +302,22 @@ function startListeners() {
         }
 
         paste(data);
+
+        // Updated restricted elements
+        updateRestrictedElementsInScope();
+
         e.preventDefault();
     });
 
+    restrictedElements.forEach((element) => {
+        $(`#${element}`).mouseover(() => {
+            showRestricted();
+        });
+
+        $(`#${element}`).mouseout(() => {
+            hideRestricted();
+        })
+    });
 }
 
 var isIe = (navigator.userAgent.toLowerCase().indexOf("msie") != -1 ||
@@ -378,4 +419,7 @@ function delete_selected(){
         if (!(simulationArea.multipleObjectSelections[i].objectType == "Node" && simulationArea.multipleObjectSelections[i].type != 2)) simulationArea.multipleObjectSelections[i].cleanDelete();
     }
     simulationArea.multipleObjectSelections = [];
+
+    // Updated restricted elements
+    updateRestrictedElementsInScope();
 }

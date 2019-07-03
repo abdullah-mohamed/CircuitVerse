@@ -6,12 +6,19 @@ function toggleLayoutMode() {
         layoutMode = false;
         temp_buffer = undefined;
         $("#layoutDialog").fadeOut();
+        $('#subcircuitMenu').empty();
+        $('#subcircuitMenu').css('display', 'none');
+        $('#menu').css('display', 'block');
         globalScope.centerFocus(false);
         dots();
 
     } else {
         layoutMode = true;
         $("#layoutDialog").fadeIn();
+        $('#menu').css('display', 'none');
+        $('#subcircuitMenu').css('display', 'block');
+        fillSubcircuitElements();
+        
         globalScope.ox = 0;
         globalScope.oy = 0;
         globalScope.scale = DPR * 1.3;
@@ -35,6 +42,21 @@ function layoutUpdate(scope = globalScope) {
     for (var i = 0; i < temp_buffer.Output.length; i++) {
         temp_buffer.Output[i].update()
     }
+
+    for(let i = 0; i < circuitElementList.length; i++){
+        if (!window[circuitElementList[i]].prototype.canShowInSubcircuit) continue;
+
+        let elementName = circuitElementList[i];
+
+        for(let j = 0; j < globalScope[elementName].length; j++){
+
+            if (globalScope[elementName][j].subcircuitMetadata.showInSubcircuit) {
+                globalScope[elementName][j].layoutUpdate();
+            }
+           
+        }
+    }
+
     paneLayout(scope);
     renderLayout(scope);
 }
@@ -77,19 +99,11 @@ function paneLayout(scope = globalScope){
 // Buffer object to store changes
 function layout_buffer(scope = globalScope) {
 
-    // Position of screen in layoutMode -- needs to be deprecated, reset screen position instead
-    var x = -Math.round(globalScope.ox / 10) * 10;
-    var y = -Math.round(globalScope.oy / 10) * 10;
-
     var w = Math.round((width / globalScope.scale) * 0.01) * 10; // 10% width of screen in layoutMode
     var h = Math.round((height / globalScope.scale) * 0.01) * 10; // 10% height of screen in layoutMode
 
-    var xx = x + w;
-    var yy = y + h;
-
-    // Position of subcircuit
-    this.xx = xx;
-    this.yy = yy;
+    globalScope.ox = w;
+    globalScope.oy = h;
 
     // Assign layout if exist or create new one
     this.layout = Object.assign({}, scope.layout); //Object.create(scope.layout);
@@ -97,13 +111,12 @@ function layout_buffer(scope = globalScope) {
     // Push Input Nodes
     this.Input = [];
     for (var i = 0; i < scope.Input.length; i++)
-        this.Input.push(new layoutNode(scope.Input[i].layoutProperties.x, scope.Input[i].layoutProperties.y, scope.Input[i].layoutProperties.id, scope.Input[i].label, xx, yy, scope.Input[i].type, scope.Input[i]))
+        this.Input.push(new layoutNode(scope.Input[i].layoutProperties.x, scope.Input[i].layoutProperties.y, scope.Input[i].layoutProperties.id, scope.Input[i].label, scope.Input[i].type, scope.Input[i]))
 
     // Push Output Nodes
     this.Output = [];
     for (var i = 0; i < scope.Output.length; i++)
-        this.Output.push(new layoutNode(scope.Output[i].layoutProperties.x, scope.Output[i].layoutProperties.y, scope.Output[i].layoutProperties.id, scope.Output[i].label, xx, yy, scope.Output[i].type, scope.Output[i]))
-
+        this.Output.push(new layoutNode(scope.Output[i].layoutProperties.x, scope.Output[i].layoutProperties.y, scope.Output[i].layoutProperties.id, scope.Output[i].label, scope.Output[i].type, scope.Output[i]))
 }
 
 // Check if position is on the boundaries of subcircuit
@@ -126,7 +139,8 @@ layout_buffer.prototype.isNodeAt = function(x, y) {
 }
 
 // Function to render layout on screen
-function renderLayout(scope = globalScope) {
+//                   COMMENTED TO PRESERVE FROM CHANGES WHILE TESTING
+/* function renderLayout(scope = globalScope) {
     if (!layoutMode) return;
 
     var xx = temp_buffer.xx;
@@ -180,6 +194,73 @@ function renderLayout(scope = globalScope) {
         dots();
     }
 
+} */
+function renderLayout(scope = globalScope) {
+    if (!layoutMode) return;
+
+    var ctx = simulationArea.context;
+    simulationArea.clear();
+
+    ctx.strokeStyle = "black";
+    ctx.fillStyle = "white";
+    ctx.lineWidth = correctWidth(3);
+
+    // Draw base rectangle
+    ctx.beginPath();
+    rect2(ctx, 0, 0, temp_buffer.layout.width, temp_buffer.layout.height, 0, 0, "RIGHT");
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "black";
+    if(temp_buffer.layout.titleEnabled){
+        fillText(ctx, scope.name, temp_buffer.layout.title_x, temp_buffer.layout.title_y, 11);
+    }
+
+    // Draw labels
+    for (var i = 0; i < temp_buffer.Input.length; i++) {
+        if (!temp_buffer.Input[i].label) continue;
+        var info = determine_label(temp_buffer.Input[i].x, temp_buffer.Input[i].y, scope);
+        ctx.textAlign = info[0];
+        fillText(ctx, temp_buffer.Input[i].label, temp_buffer.Input[i].x + info[1] + xx, yy + temp_buffer.Input[i].y + info[2], 12);
+    }
+    for (var i = 0; i < temp_buffer.Output.length; i++) {
+        if (!temp_buffer.Output[i].label) continue;
+        var info = determine_label(temp_buffer.Output[i].x, temp_buffer.Output[i].y, scope);
+        ctx.textAlign = info[0];
+        fillText(ctx, temp_buffer.Output[i].label, temp_buffer.Output[i].x + info[1] + xx, yy + temp_buffer.Output[i].y + info[2], 12);
+    }
+    ctx.fill();
+
+    // Draw points
+    for (var i = 0; i < temp_buffer.Input.length; i++) {
+        temp_buffer.Input[i].draw()
+    }
+    for (var i = 0; i < temp_buffer.Output.length; i++) {
+        temp_buffer.Output[i].draw()
+    }
+
+    if (gridUpdate) {
+        gridUpdate = false;
+        dots();
+    }
+    
+    // Render objects
+    
+    for(let i = 0; i < circuitElementList.length; i++){
+        if (!window[circuitElementList[i]].prototype.canShowInSubcircuit) continue;
+
+        let elementName = circuitElementList[i];
+
+        for(let j = 0; j < globalScope[elementName].length; j++){
+
+            if (globalScope[elementName][j].subcircuitMetadata.showInSubcircuit) {
+                globalScope[elementName][j].layoutDraw();
+            }
+           
+        }
+    }
 }
 
 // Helper function to reset all nodes to original default positions
@@ -301,13 +382,11 @@ function toggleLayoutTitle(){
     temp_buffer.layout.titleEnabled=!temp_buffer.layout.titleEnabled;
 }
 
-function layoutNode(x, y, id, label = "", xx, yy, type, parent) {
+function layoutNode(x, y, id, label = "", type, parent) {
 
     this.type = type;
     this.id = id
 
-    this.xx = xx; // Position of parent
-    this.yy = yy; // Position of parent
     this.label = label;
 
     this.prevx = undefined;
@@ -326,10 +405,10 @@ function layoutNode(x, y, id, label = "", xx, yy, type, parent) {
 }
 
 layoutNode.prototype.absX = function() {
-    return this.x + this.xx;
+    return this.x;
 }
 layoutNode.prototype.absY = function() {
-    return this.y + this.yy
+    return this.y;
 }
 
 layoutNode.prototype.update = function() {
@@ -367,9 +446,9 @@ layoutNode.prototype.update = function() {
 
     } else if (this.wasClicked && this.clicked) {
         // Check if valid position and update accordingly
-        if (temp_buffer.isAllowed(simulationArea.mouseX - this.xx, simulationArea.mouseY - this.yy) && !temp_buffer.isNodeAt(simulationArea.mouseX - this.xx, simulationArea.mouseY - this.yy)) {
-            this.x = simulationArea.mouseX - this.xx;
-            this.y = simulationArea.mouseY - this.yy;
+        if (temp_buffer.isAllowed(simulationArea.mouseX, simulationArea.mouseY) && !temp_buffer.isNodeAt(simulationArea.mouseX, simulationArea.mouseY)) {
+            this.x = simulationArea.mouseX;
+            this.y = simulationArea.mouseY;
         }
     }
 

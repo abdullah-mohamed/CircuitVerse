@@ -1,6 +1,10 @@
 class CollaborationsController < ApplicationController
   before_action :set_collaboration, only: [:show, :edit, :update, :destroy]
 
+  def self.policy_class
+    ProjectPolicy
+  end
+
   # GET /collaborations
   # GET /collaborations.json
   def index
@@ -30,10 +34,7 @@ class CollaborationsController < ApplicationController
     # if(not @project.assignment_id.nil?)
     #   render plain: "Assignments cannot have collaborators. Please contact admin." and return
     # end
-
-    if(@project.author_id!=current_user.id)
-      render plain: "Access Restricted " and return
-    end
+    authorize @project, :author_access?
 
     already_present = User.where(id: @project.collaborations.pluck(:user_id)).pluck(:email)
     collaboration_emails = Utils.parse_mails(collaboration_params[:emails])
@@ -59,6 +60,8 @@ class CollaborationsController < ApplicationController
   # PATCH/PUT /collaborations/1
   # PATCH/PUT /collaborations/1.json
   def update
+    authorize @collaboration.project, :author_access?
+
     respond_to do |format|
       if @collaboration.update(collaboration_params)
         format.html { redirect_to @collaboration, notice: 'Collaboration was successfully updated.' }
@@ -73,6 +76,8 @@ class CollaborationsController < ApplicationController
   # DELETE /collaborations/1
   # DELETE /collaborations/1.json
   def destroy
+    authorize @collaboration.project, :author_access?
+
     @collaboration.destroy
     respond_to do |format|
       format.html { redirect_to user_project_path(@collaboration.project.author_id,@collaboration.project_id), notice: 'Collaboration was successfully destroyed.' }

@@ -1,14 +1,83 @@
 var smartDropXX = 50;
 var smartDropYY = 80;
 
+// Object stores the position of context menu
+var ctxPos = {
+    x: 0,
+    y: 0,
+    visible: false,
+};
 
-$(document).ready(function() {
+// Function hides the context menu
+function hideContextMenu() {
+    var el = document.getElementById('contextMenu');
+    el.style = 'opacity:0;';
+    setTimeout(() => {
+        el.style = 'visibility:hidden;';
+        ctxPos.visible = false;
+    }, 200); // Hide after 2 sec
+}
+
+// Function displays context menu
+function showContextMenu() {
+    if (layoutMode) return false; // Hide context menu when it is in Layout Mode
+    $('#contextMenu').css({
+        visibility: 'visible',
+        opacity: 1,
+        top: `${ctxPos.y}px`,
+        left: `${ctxPos.x}px`,
+    });
+    ctxPos.visible = true;
+    return false;
+}
+
+// Function is called when context item is clicked
+// eslint-disable-next-line no-unused-vars
+function menuItemClicked(id) {
+    hideContextMenu();
+
+    if (id === 0) {
+        document.execCommand('copy');
+    } else if (id === 1) {
+        document.execCommand('cut');
+    } else if (id === 2) {
+        // document.execCommand('paste'); it is restricted to sove this problem we use dataPasted variable
+        paste(localStorage.getItem('clipboardData'));
+    } else if (id === 3) {
+        delete_selected();
+    } else if (id === 4) {
+        undo();
+        undo();
+    } else if (id === 5) {
+        newCircuit();
+    } else if (id === 6) {
+        createSubCircuitPrompt();
+    } else if (id === 7) {
+        globalScope.centerFocus(false);
+    }
+}
+
+function setupUI() {
+    var ctxEl = document.getElementById('contextMenu');
+    document.addEventListener('mousedown', (e) => {
+        // Check if mouse is not inside the context menu and menu is visible
+        if (!((e.clientX >= ctxPos.x && e.clientX <= ctxPos.x + ctxEl.offsetWidth)
+        && (e.clientY >= ctxPos.y && e.clientY <= ctxPos.y + ctxEl.offsetHeight))
+        && (ctxPos.visible && e.which !== 3)) {
+            hideContextMenu();
+        }
+
+        // Change the position of context whenever mouse is clicked
+        ctxPos.x = e.clientX;
+        ctxPos.y = e.clientY;
+    });
+    document.getElementById('canvasArea').oncontextmenu = showContextMenu;
 
     $("#sideBar").resizable({
         handles: 'e',
         // minWidth:270,
     });
-    $("#menu").accordion({
+    $("#menu, #subcircuitMenu").accordion({
         collapsible: true,
         active: false,
         heightStyle: "content"
@@ -18,8 +87,7 @@ $(document).ready(function() {
     //     // minHeight:200,
     // });
 
-    $('.logixModules').mousedown(function() {
-        //////console.log(smartDropXX,smartDropYY);
+    $('.logixModules').mousedown(function () {
         if (simulationArea.lastSelected && simulationArea.lastSelected.newElement) simulationArea.lastSelected.delete();
         var obj = new window[this.id](); //(simulationArea.mouseX,simulationArea.mouseY);
         simulationArea.lastSelected = obj;
@@ -30,33 +98,25 @@ $(document).ready(function() {
             smartDropXX = 50;
             smartDropYY += 80;
         }
+
     });
-    $('.logixButton').click(function() {
+
+
+    $('.logixButton').click(function () {
         window[this.id]();
     });
     // var dummyCounter=0;
 
 
-    var iconList = $('.icon');
-    // //////console.log(iconList)
-    for (var i = 0; i < iconList.length; i++) {
-        //////console.log(iconList[i].id);
-        $(iconList[i]).append('<img src="/img/' + iconList[i].id + '.svg"/>');
-        $(iconList[i]).append('<p class="img__description">' + iconList[i].id +
-            '</p>');
-        // $(iconList[i]).hover()
-
-    }
-    $('.logixModules').hover(function() {
+    $('.logixModules').hover(function () {
         // Tooltip can be statically defined in the prototype.
-        var tooltipText = window[this.id].prototype.tooltipText || help[this.id];
+        var tooltipText = window[this.id].prototype.tooltipText;
         if (!tooltipText) return;
         $("#Help").addClass("show");
         $("#Help").empty();
-        ////console.log("SHOWING")
         $("#Help").append(tooltipText);
     }); // code goes in document ready fn only
-    $('.logixModules').mouseleave(function() {
+    $('.logixModules').mouseleave(function () {
         $("#Help").removeClass("show");
 
     }); // code goes in document ready fn only
@@ -70,28 +130,7 @@ $(document).ready(function() {
     // });
     // $('#moduleProperty').draggable();
 
-}); // accordion
-
-var help = {
-    "Input": "Input ToolTip: Toggle the individual bits by clicking on them.",
-    "Button": "Button ToolTip: High(1) when pressed and Low(0) when released.",
-    "ConstantVal": "Constant ToolTip: Bits are fixed. Double click element to change the bits.",
-    "Stepper": "Stepper ToolTip: Increase/Decrease value by selecting the stepper and using +/- keys.",
-    "Output": "Output ToolTip: Simple output element showing output in binary.",
-    "RGBLed": "RGB Led ToolTip: RGB Led inputs 8 bit values for the colors RED, GREEN and BLUE.",
-    "SquareRGBLed": "Square RGB Led ToolTip: RGB Led inputs 8 bit values for the colors RED, GREEN and BLUE.",
-    "DigitalLed": "Digital Led ToolTip: Digital LED glows high when input is High(1).",
-    "VariableLed": "Variable Led ToolTip: Variable LED inputs an 8 bit value and glows with a proportional intensity.",
-    "HexDisplay": "Hex Display ToolTip: Inputs a 4 Bit Hex number and displays it.",
-    "SevenSegDisplay": "Seven Display ToolTip: Consists of 7+1 single bit inputs.",
-    "TTY": "TTY ToolTip: Console buffer",
-    "Keyboard": "Keyboard ToolTip: Select the Keyboard and type into the buffer.",
-    "Text": "Text ToolTip: Use this to document your circuit.",
-    "Flag": "FLag ToolTip: Use this for debugging and plotting.",
-    "Splitter": "Splitter ToolTip: Split multiBit Input into smaller bitwidths or vice versa.",
-    "ALU": "ALU ToolTip: 0: A&B, 1:A|B, 2:A+B, 4:A&~B, 5:A|~B, 6:A-B, 7:SLT ",
 }
-
 
 
 var prevPropertyObj = undefined;
@@ -107,8 +146,8 @@ function showProperties(obj) {
         $('#moduleProperty-inner').append("<p>Project : <input class='objectPropertyAttribute' type='text'  name='setProjectName'  value='" + (projectName || "Untitled") + "'></p>");
         $('#moduleProperty-inner').append("<p>Circuit : <input class='objectPropertyAttribute' type='text'  name='changeCircuitName'  value='" + (globalScope.name || "Untitled") + "'></p>");
         $('#moduleProperty-inner').append("<p>Clock Time : <input class='objectPropertyAttribute' min='50' type='number' style='width:100px' step='10' name='changeClockTime'  value='" + (simulationArea.timePeriod) + "'>ms</p>");
-        $('#moduleProperty-inner').append("<p>Clock Enabled : <label class='switch'> <input type='checkbox' " + ["","checked"][simulationArea.clockEnabled+0] + " class='objectPropertyAttributeChecked' name='changeClockEnable' > <span class='slider'></span> </label></p>");
-        $('#moduleProperty-inner').append("<p>Lite Mode : <label class='switch'> <input type='checkbox' " + ["","checked"][lightMode+0] + " class='objectPropertyAttributeChecked' name='changeLightMode' > <span class='slider'></span> </label></p>");
+        $('#moduleProperty-inner').append("<p>Clock Enabled : <label class='switch'> <input type='checkbox' " + ["", "checked"][simulationArea.clockEnabled + 0] + " class='objectPropertyAttributeChecked' name='changeClockEnable' > <span class='slider'></span> </label></p>");
+        $('#moduleProperty-inner').append("<p>Lite Mode : <label class='switch'> <input type='checkbox' " + ["", "checked"][lightMode + 0] + " class='objectPropertyAttributeChecked' name='changeLightMode' > <span class='slider'></span> </label></p>");
         // $('#moduleProperty-inner').append("<p>  ");
         $('#moduleProperty-inner').append("<p><button type='button' class='objectPropertyAttributeChecked btn btn-danger btn-xs' name='deleteCurrentCircuit' >Delete Circuit</button>  <button type='button' class='objectPropertyAttributeChecked btn btn-primary btn-xs' name='toggleLayoutMode' >Edit layout</button> </p>");
     } else {
@@ -130,18 +169,18 @@ function showProperties(obj) {
 
 
         if (!obj.labelDirectionFixed) {
-            var s = $("<select class='objectPropertyAttribute' name='newLabelDirection'>" + "<option value='RIGHT' "+ ["","selected"][+(obj.labelDirection=="RIGHT")] +  " >RIGHT</option><option value='DOWN' "+ ["","selected"][+(obj.labelDirection=="DOWN")] +  " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'"+ ["","selected"][+(obj.labelDirection=="LEFT")] +  " >LEFT</option><option value='UP' " + "<option value='RIGHT'"+ ["","selected"][+(obj.labelDirection=="UP")] +  " >UP</option>"+"</select>");
+            var s = $("<select class='objectPropertyAttribute' name='newLabelDirection'>" + "<option value='RIGHT' " + ["", "selected"][+(obj.labelDirection == "RIGHT")] + " >RIGHT</option><option value='DOWN' " + ["", "selected"][+(obj.labelDirection == "DOWN")] + " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'" + ["", "selected"][+(obj.labelDirection == "LEFT")] + " >LEFT</option><option value='UP' " + "<option value='RIGHT'" + ["", "selected"][+(obj.labelDirection == "UP")] + " >UP</option>" + "</select>");
             s.val(obj.labelDirection);
             $('#moduleProperty-inner').append("<p>Label Direction: " + $(s).prop('outerHTML') + "</p>");
         }
 
 
         if (!obj.directionFixed) {
-            var s = $("<select class='objectPropertyAttribute' name='newDirection'>" + "<option value='RIGHT' "+ ["","selected"][+(obj.direction=="RIGHT")] +  " >RIGHT</option><option value='DOWN' "+ ["","selected"][+(obj.direction=="DOWN")] +  " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'"+ ["","selected"][+(obj.direction=="LEFT")] +  " >LEFT</option><option value='UP' " + "<option value='RIGHT'"+ ["","selected"][+(obj.direction=="UP")] +  " >UP</option>"+"</select>");
+            var s = $("<select class='objectPropertyAttribute' name='newDirection'>" + "<option value='RIGHT' " + ["", "selected"][+(obj.direction == "RIGHT")] + " >RIGHT</option><option value='DOWN' " + ["", "selected"][+(obj.direction == "DOWN")] + " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'" + ["", "selected"][+(obj.direction == "LEFT")] + " >LEFT</option><option value='UP' " + "<option value='RIGHT'" + ["", "selected"][+(obj.direction == "UP")] + " >UP</option>" + "</select>");
             $('#moduleProperty-inner').append("<p>Direction: " + $(s).prop('outerHTML') + "</p>");
 
         } else if (!obj.orientationFixed) {
-            var s = $("<select class='objectPropertyAttribute' name='newDirection'>" + "<option value='RIGHT' "+ ["","selected"][+(obj.direction=="RIGHT")] +  " >RIGHT</option><option value='DOWN' "+ ["","selected"][+(obj.direction=="DOWN")] +  " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'"+ ["","selected"][+(obj.direction=="LEFT")] +  " >LEFT</option><option value='UP' " + "<option value='RIGHT'"+ ["","selected"][+(obj.direction=="UP")] +  " >UP</option>"+"</select>");
+            var s = $("<select class='objectPropertyAttribute' name='newDirection'>" + "<option value='RIGHT' " + ["", "selected"][+(obj.direction == "RIGHT")] + " >RIGHT</option><option value='DOWN' " + ["", "selected"][+(obj.direction == "DOWN")] + " >DOWN</option><option value='LEFT' " + "<option value='RIGHT'" + ["", "selected"][+(obj.direction == "LEFT")] + " >LEFT</option><option value='UP' " + "<option value='RIGHT'" + ["", "selected"][+(obj.direction == "UP")] + " >UP</option>" + "</select>");
             $('#moduleProperty-inner').append("<p>Orientation: " + $(s).prop('outerHTML') + "</p>");
         }
 
@@ -157,7 +196,7 @@ function showProperties(obj) {
                     $('#moduleProperty-inner').append(s);
                 }
                 else if (obj.mutableProperties[attr].type == "button") {
-                    var s = "<p><button class='objectPropertyAttribute btn btn-primary btn-xs' type='button'  name='" + prop.func + "'>" +prop.name +"</button></p>";
+                    var s = "<p><button class='objectPropertyAttribute btn btn-primary btn-xs' type='button'  name='" + prop.func + "'>" + prop.name + "</button></p>";
                     $('#moduleProperty-inner').append(s);
                 }
 
@@ -166,16 +205,15 @@ function showProperties(obj) {
     }
 
     // Tooltip can be defined in the prototype or the object itself, in addition to help map.
-    var tooltipText = obj && (obj.tooltipText || help[obj.objectType]);
+    var tooltipText = obj && (obj.tooltipText);
     if (tooltipText) {
         $('#moduleProperty-inner').append('<p><button id="toolTipButton" class="btn btn-primary btn-xs" type="button" >CircuitVerse Tip</button></p>');
-        $('#toolTipButton').hover(function() {
+        $('#toolTipButton').hover(function () {
             $("#Help").addClass("show");
             $("#Help").empty();
-            ////console.log("SHOWING")
             $("#Help").append(tooltipText);
         }); // code goes in document ready fn only
-        $('#toolTipButton').mouseleave(function() {
+        $('#toolTipButton').mouseleave(function () {
             $("#Help").removeClass("show");
         });
     }
@@ -186,29 +224,27 @@ function showProperties(obj) {
 
 
 
-    $(".objectPropertyAttribute").on("change keyup paste click", function() {
+    $(".objectPropertyAttribute").on("change keyup paste click", function () {
         // return;
-        //////console.log(this.name+":"+this.value);
 
 
         scheduleUpdate();
         updateCanvas = true;
         wireToBeChecked = 1;
-        if(simulationArea.lastSelected&&simulationArea.lastSelected[this.name])
+        if (simulationArea.lastSelected && simulationArea.lastSelected[this.name])
             prevPropertyObj = simulationArea.lastSelected[this.name](this.value) || prevPropertyObj;
         else
             window[this.name](this.value);
     })
-    $(".objectPropertyAttributeChecked").on("change keyup paste click", function() {
+    $(".objectPropertyAttributeChecked").on("change keyup paste click", function () {
         // return;
-        //////console.log(this.name+":"+this.value);
 
 
 
         scheduleUpdate();
         updateCanvas = true;
         wireToBeChecked = 1;
-        if(simulationArea.lastSelected&&simulationArea.lastSelected[this.name])
+        if (simulationArea.lastSelected && simulationArea.lastSelected[this.name])
             prevPropertyObj = simulationArea.lastSelected[this.name](this.value) || prevPropertyObj;
         else
             window[this.name](this.checked);
@@ -230,4 +266,53 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+function fillSubcircuitElements() {
+
+    $('#subcircuitMenu').empty();
+
+    for(let el of circuitElementList) {
+        if(!window[el].prototype.canShowInSubcircuit || globalScope[el].length === 0) continue;
+        let tempHTML = '';
+
+        // add a panel for each existing group
+        tempHTML += `<div class="panelHeader">${el}s</div>`;
+        tempHTML += `<div class="panel">`;
+
+        let available = false;
+
+        // add an SVG for each element
+        for(let i = 0; i < globalScope[el].length; i++){
+            if (!globalScope[el][i].subcircuitMetadata.showInSubcircuit) {
+                tempHTML += `<div class="icon subcircuitModule" id="${el}-${i}" data-element-id="${i}" data-element-name="${el}">`;
+                tempHTML += `<img src= "/img/${el}.svg">`;
+                tempHTML += `<p class="img__description">${(globalScope[el][i].label !== "")? globalScope[el][i].label : 'unlabeled'}</p>`;
+                tempHTML += '</div>';
+                available = true;
+            }
+           
+        }
+        tempHTML += '</div>';
+
+        if (available)
+            $('#subcircuitMenu').append(tempHTML);
+    }
+
+    $('#subcircuitMenu').accordion("refresh");
+
+    $('.subcircuitModule').mousedown(function () {
+
+        let elementName = this.dataset.elementName;
+        let elementIndex = this.dataset.elementId;
+
+        let element = globalScope[elementName][elementIndex];
+        
+        element.subcircuitMetadata.showInSubcircuit = true;
+        element.newElement = true;
+        simulationArea.lastSelected = element;
+        this.parentElement.removeChild(this);
+        
+
+    });
 }

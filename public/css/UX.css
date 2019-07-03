@@ -1,3 +1,51 @@
+
+.deleteOff{
+    color: red;
+    float: right;
+    cursor: pointer;
+    padding: 2px;
+}
+
+#contextMenu{
+	width:150px;
+	visibility:hidden;
+	box-shadow:0px 2px 7px rgba(0,0,0,0.2);
+	border:1px solid rgba(0,0,0,0.2);
+	position:fixed;
+	z-index:100;
+	background:#fff;
+	opacity:0;
+	top:100;
+	left:100;
+    cursor:pointer;
+    color:#000;
+	padding-bottom:4px;
+	padding-top:4px;
+	transition:opacity 0.2s ease-in-out;
+	user-select:none;
+}
+
+#contextMenu ul{
+    margin: 0;
+    padding: 0;
+	font: 16px sans-serif;
+}
+
+#contextMenu ul li{
+	list-style:none;
+	padding:8px;
+	padding-left:20px;
+}
+
+#contextMenu ul li a{
+    text-decoration:none;
+    color:#000 !important;
+}
+
+#contextMenu ul li:hover{
+	background:rgba(0,0,0,.1);
+}
+
 button:focus {
     outline: 0;
 }
@@ -303,16 +351,28 @@ table {
     user-select: none;
 }
 
-.ui-dialog-titlebar {
-    background-color: #42d1f4;
-}
-
 body, html {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden
+}
+
+#restrictedDiv {
+    position: absolute;
+    top: 10px;
+    margin-left: 10px;
+    width: 560px;
+    z-index: 100;
+}
+
+#restrictedElementsDiv {
+    position: absolute;
+    top: 90px;
+    right: 10px;
+    z-index: 100;
+    width: 200px;
 }
 
 #MessageDiv {
@@ -737,6 +797,19 @@ div.icon img {
 .ui-dialog-titlebar {
     background-color: black;
 }
+
+.ui-dialog-titlebar-close {
+    background-image: url('../img/cross.png');
+    position: absolute;
+	right: .3em;
+	top: 50%;
+	width: 21px;
+	margin: -10px 0 0 0;
+	padding: 1px;
+	height: 20px;
+}
+
+.ui-icon-close{background-position:-80px -128px}
 
 .ui-dialog .ui-dialog-buttonpane button {
     background-color: #004280;
